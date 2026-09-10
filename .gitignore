@@ -12,6 +12,9 @@ node_modules/
 _tree.json
 *.xmind
 
+# 个人笔记（只留本地，不上传）
+说明.txt
+
 # 编辑器 / 系统
 .vscode/
 .idea/
