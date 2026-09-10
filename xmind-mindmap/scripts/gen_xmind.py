@@ -74,47 +74,58 @@ def _uid(tag=""):
 # ---------------------------------------------------------------------------
 # 主题（theme）
 # ---------------------------------------------------------------------------
-# ⚠️ 踩坑记录（这些属性别删）：
-#   每个 topic 层级都必须带 "fo:color"，否则 XMind 会退回它自己的默认文字色，
+# ⚠️ 踩坑记录（改这个函数前必读，两个坑都踩过了）：
+#
+# 【坑 1】每个 topic 层级都必须有 "fo:color"，否则 XMind 会退回它自己的默认文字色，
 #   而中央主题的默认文字色是「白色」（XMind 的中央主题本来设计成彩色填充块 + 白字）。
 #   偏偏中央主题又是 fill-pattern:none（无填充白底）→ 白字 + 白底 = 看不见文字。
 #   注意：数据里 title 一直都在，不是内容丢了，是「隐身」了——所以表现出来像是
 #   「打不进去字 / 改了没反应」，其实是打得进去、只是打什么都看不见。
+#   → 中央主题的 fo:color 显式写死 "#000000"，不依赖 XMind 的 "inherited" 解析。
 #
-#   这里【直接写死 #000000】，不用 XMind 写过的 "inherited"：
-#   "inherited" 要靠 XMind 自己往上找父级解析，不同版本/主题下可能解析成白色，
-#   写死黑色就没有这层不确定性。
+# 【坑 2】"svg:fill" 是【形状填充色】，不是文字色！各层级的正确写法不一样：
+#     centralTopic        → 字面量颜色（"#000000"）
+#     mainTopic/subTopic  → "inherited"（继承分支颜色）
+#   给 mainTopic/subTopic 写死 "#000000" 会把节点整块涂成纯黑，
+#   黑底 + 黑字 = 叶子节点看不见文字（整片变成黑条）。
+#   这个坑只有在同时给了 shape-class（节点有形状）时才会暴露。
+#
+# 下面这套属性是从「XMind 自己保存出来的、渲染正常的文件」里逐字段抄出来的，
+# 别凭感觉改。唯一的手工改动是 centralTopic 的 fo:color 写成 "#000000"。
 
-def _topic_props(font_size, font_weight, text_align="left", fill=None,
-                 fill_pattern="none", line_color=None,
+def _topic_props(font_size, font_weight, text_align="left",
+                 fill="inherited", fill_pattern="none",
+                 font_color="inherited", line_color="inherited",
+                 line_pattern="inherited", border_line_color="inherited",
                  line_class="org.xmind.branchConnection.roundedElbow"):
-    """一个 topic 层级的完整属性集。fo:color 是必须项。"""
-    p = {
+    """一个 topic 层级的完整属性集。
+
+    fill       —— 形状填充色。mainTopic/subTopic 必须用 "inherited"，
+                  写死颜色会把节点涂成纯色（黑底黑字就看不见字了）。
+    font_color —— 文字色。只有 centralTopic 需要写死 "#000000"。
+    """
+    return {
         "fo:font-family": "NeverMind",
         "fo:font-size": font_size,
         "fo:font-weight": font_weight,
         "fo:font-style": "normal",
-        "fo:color": "#000000",          # ← 缺了它中央主题就是白字白底
+        "fo:color": font_color,
         "fo:text-transform": "manual",
         "fo:text-decoration": "none",
         "fo:text-align": text_align,
-    }
-    if fill is not None:
-        p["svg:fill"] = fill
-    p.update({
+        "svg:fill": fill,
         "fill-pattern": fill_pattern,
         "line-width": "2pt",
-        "line-color": line_color or "inherited",
-        "line-pattern": "inherited",
-        "border-line-color": "inherited",
+        "line-color": line_color,
+        "line-pattern": line_pattern,
+        "border-line-color": border_line_color,
         "border-line-width": "0pt",
         "border-line-pattern": "inherited",
         "shape-class": "org.xmind.topicShape.roundedRect",
         "line-class": line_class,
         "arrow-end-class": "inherited",
         "alignment-by-level": "inherited",
-    })
-    return p
+    }
 
 
 def _theme():
@@ -133,30 +144,39 @@ def _theme():
             "id": _uid(),
             "properties": _topic_props(
                 "30pt", "800", text_align="center",
-                fill="#000000", fill_pattern="none", line_color="#ADADAD",
+                fill="#000000", fill_pattern="none",
+                font_color="#000000",          # 只有中心主题写死黑色
+                line_color="#ADADAD", line_pattern="solid",
+                border_line_color="#000000",
                 line_class="org.xmind.branchConnection.curve",
             ),
         },
         "mainTopic": {
             "id": _uid(),
-            "properties": _topic_props("18pt", "500", fill="#000000"),
+            "properties": _topic_props("18pt", "500", fill_pattern="solid"),
         },
         "subTopic": {
+            # fill 保持默认的 "inherited"，写死颜色会变成黑条
             "id": _uid(),
-            "properties": _topic_props("14pt", "400", fill="#000000"),
+            "properties": _topic_props("14pt", "400"),
         },
         "floatingTopic": {
             "id": _uid(),
             "properties": _topic_props("14pt", "500", fill="#EEEBEE",
-                                       fill_pattern="solid"),
+                                       fill_pattern="solid",
+                                       line_pattern="solid",
+                                       border_line_color="#EEEBEE"),
         },
         "summaryTopic": {
             "id": _uid(),
-            "properties": _topic_props("14pt", "400", fill="#000000"),
+            "properties": _topic_props("14pt", "400", fill="#000000",
+                                       border_line_color="#000000"),
         },
         "calloutTopic": {
             "id": _uid(),
-            "properties": _topic_props("14pt", "400", fill="#000000"),
+            "properties": _topic_props("14pt", "400", fill="#000000",
+                                       fill_pattern="solid",
+                                       border_line_color="#000000"),
         },
         "importantTopic": {
             "id": _uid(),

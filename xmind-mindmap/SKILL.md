@@ -148,9 +148,22 @@ python "{SKILL_DIR}/scripts/gen_xmind.py" --root "中心主题" --tree "d:\cc\_t
 | `Thumbnails/thumbnail.png` | 缩略图 | 占位图即可，保存后 XMind 覆盖成真图 |
 
 **常见坑：**
+
+文件格式类：
 - `manifest.json` 误把自己列进去 → XMind 报「文档损坏」
 - 缺 `content.xml` 或缩略图 → 可能报损坏/缩略图黑屏
 - 中文必须 `ensure_ascii=False` 写入，否则乱码
+
+theme 配色类（两个都是踩过的真坑，改 `_theme()` 前必读）：
+- **缺 `fo:color` → 中心主题看不见文字。** 每个 topic 层级都必须有文字色，否则 XMind 退回内置默认值，而中央主题的默认是**白色**；偏偏中央主题又是 `fill-pattern:none`（无填充白底）→ 白字白底 = 隐身。
+  → 现象：中心主题是个空框，能点进去打字但打什么都看不见（数据里 `title` 其实一直在）。
+- **`svg:fill` 写死颜色 → 节点变黑条。** `svg:fill` 是**形状填充色**，不是文字色。各层级正确写法：
+  - `centralTopic` → 字面量颜色（`"#000000"`）
+  - `mainTopic` / `subTopic` → **必须 `"inherited"`**（继承分支颜色）
+
+  给 `mainTopic`/`subTopic` 写死 `"#000000"` 会把节点整块涂成纯黑，黑底黑字 → 叶子节点看不见文字。
+  → 这个坑只有在同时给了 `shape-class`（节点有形状）时才会暴露；属性不全时反而不出现，容易误判。
+- **改 `_theme()` 的正确姿势**：先找一个「XMind 自己保存出来、渲染正常」的 `.xmind`，把它 `content.json` 里的 `theme` 逐字段抄过来，别凭感觉改。
 
 ---
 
